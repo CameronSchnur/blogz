@@ -21,7 +21,9 @@ class BlogHandler(webapp2.RequestHandler):
         """
 
         # TODO - filter the query so that only posts by the given user
-        return None
+        query = Post.all().order('-created')
+        query.filter("author =", user.key())
+        return query.fetch(limit=limit, offset=offset)
 
     def get_user_by_name(self, username):
         """ Get a user object from the db, based on their username """
@@ -278,17 +280,19 @@ class LoginHandler(BlogHandler):
 
         if not user:
             self.render_login_form(error="Invalid username")
-        elif hashutils.valid_pw(submitted_username, submitted_password, user.pw_hash):
+        elif not hashutils.valid_pw(submitted_username, submitted_password, user.pw_hash):
+            self.render_login_form(error="Invalid password")
+        else:
             self.login_user(user)
             self.redirect('/blog/newpost')
-        else:
-            self.render_login_form(error="Invalid password")
+            return
+
 
 class LogoutHandler(BlogHandler):
 
     def get(self):
         self.logout_user()
-        self.redirect('/blog')
+        self.redirect('/login')
 
 app = webapp2.WSGIApplication([
     ('/', IndexHandler),
